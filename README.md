@@ -17,7 +17,7 @@
 
 ![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8812%E6%97%A51751_2.png)
 
-翻看之前的请求，容易发现SSO-DBL来自一个叫prelogin的请求，这个请求在输入完用户名，鼠标点击输入密码的文本框是触发
+翻看之前的请求，容易发现SSO-DBL来自一个叫prelogin的请求，这个请求在输入完用户名，鼠标点击输入密码的文本框时触发
 
 ![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8812%E6%97%A51752_3.png)
 
@@ -25,9 +25,42 @@ ULOGIN_IMG则是请求验证码图片的时候获取的,而获取验证码又要
 
 ![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8812%E6%97%A51752_4.png)
 
+我们来看prelogin请求的参数
+
+![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8812%E6%97%A51848_6.png)
+
+值得关注的是那串数字和su，其余我们估计是固定参数，仔细观察发现那串数字其实是一个13位时间戳，直接使用time模块即可。接下来就要构造su了，Ctrl+F全局搜索
+输入'su:'
+
+![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8812%E6%97%A52033_1.png)
+
+找到构造su的js代码，发现是将用户名进行编码得到的使用bs64模块构造即可。
+
+这样我们就完成了prelogin请求的header和参数构造，可以获得SSO-DBL了
+
+接下来分析验证码图片的请求参数
+
+![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8812%E6%97%A51848_7.png)
+
+其中s是固定值，r经测试可以反复使用同一个值，所以只有p是需要获取的，而p可以在刚才prelogin的response中找到
+
+![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8812%E6%97%A51848_8.png)
+
 至此POST请求的header已经构建好了，其他的复制黏贴即可
 
 ## 构建 Form-Data
+
+![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8812%E6%97%A51756_5.png)
+
+这里nonce, pcid, rsakv都可以在prelogin的response里找到，door是验证码，prelt是随机数，所以每次用同一个就行，servertime是时间戳
+
+值得关注的是sp,老办法Ctrl+F找到构造的js代码
+
+![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8812%E6%97%A52106_2.png)
+
+发现这里使用了rsa算法加密，这里的公钥用了从prelogin里返回的一个叫pubkey的16进制数和16进制的10001共同生成，再将包含servertime，刚才提到的nonce,和用户密码的字符串进行加密得出sp,具体实现可以看代码。
+
+到这里所有参数已经找齐了，模拟请求即可。
 
 未完待续
 
