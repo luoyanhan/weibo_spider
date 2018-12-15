@@ -60,7 +60,31 @@ ULOGIN_IMG则是请求验证码图片的时候获取的,而获取验证码又要
 
 发现这里使用了rsa算法加密，这里的公钥用了从prelogin里返回的一个叫pubkey的16进制数和16进制的10001共同生成，再将包含servertime，刚才提到的nonce,和用户密码的字符串进行加密得出sp,具体实现可以看代码。
 
-到这里所有参数已经找齐了，模拟请求即可。
+到这里所有参数已经找齐了，模拟POST请求即可。
 
-未完待续
+我们可以看到POST请求成功后我们的cookie更新了一大堆值
+
+![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8815%E6%97%A51121_1.png)
+
+将这些值取出来后可以更新我们的cookie。
+
+到了这里本来以为已经大功告成，我们找到登陆成功的html请求
+
+![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8815%E6%97%A51135_3.png)
+
+看他的请求cookie
+
+![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8815%E6%97%A51135_4.png)
+
+发现其中一些值和我们找到的有很大出入，说明之前cookie又发生改变了。我们耐心地往上翻请求，看看新出现的以及改变了值的cookie都在哪些请求中产生。
+
+![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8815%E6%97%A51143_5.png)
+
+![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8815%E6%97%A51143_6.png)
+
+![Image text](https://github.com/luoyanhan/weibo_spider/blob/master/WeiBO_Spider/Image/%E6%90%9C%E7%8B%97%E6%88%AA%E5%9B%BE18%E5%B9%B412%E6%9C%8815%E6%97%A51149_7.png)
+
+发现我们需要找的变化了的cookie值都可以在这几个请求中找到，用之前的方法模拟请求并且抓下来即可。其中有一些请求的url和参数是每次都不同的，但是也能在我们之前发送的一些请求的response里找得到，用正则匹配出来即可。
+
+至此我们已经完成了最终home请求所需cookie的构造，模拟请求并获得最终登陆成功的cookie即可。
 
