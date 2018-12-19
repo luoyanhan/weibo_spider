@@ -130,7 +130,7 @@ def login():
         'sp': '',
         'sr': '1536*864',
         'encoding': 'UTF - 8',
-        'prelt': str(random.randint(20,200)),
+        'prelt': str(random.randint(20, 200)),
         'url': 'https://weibo.com/ajaxlogin.php?framelogin=1&callback=parent.sinaSSOController.feedBackUrlCallBack',
         'returntype': 'META'
     }
@@ -181,6 +181,10 @@ def login():
     for key in cookie_dict:
         cookie_li.append(key+'='+cookie_dict[key])
     homecookie = homecookie+'; '+'; '.join(cookie_li)
+
+    if not os.path.exists('./cookies.txt'):
+        with open(r'./cookies.txt', 'w') as f:
+            f.write(homecookie)
 
     return homecookie
 

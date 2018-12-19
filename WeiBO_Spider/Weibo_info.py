@@ -1,6 +1,7 @@
 import requests
 import re
 import json
+import os
 from Login import login
 from urllib.parse import urlencode
 from bs4 import BeautifulSoup
@@ -55,8 +56,9 @@ class WeiBo:
             soup1 = BeautifulSoup(html1, 'lxml')
             for div in soup1.find_all('div', attrs={'class': 'WB_from'}):
                 detail_url = div.find_all('a')[0]['href']
-                if '?' in detail_url:
-                    url_list.append(detail_url)
+                # if '?' in detail_url:
+                #     url_list.append(detail_url)
+                url_list.append(detail_url)
 
             url2 = 'https://weibo.com/p/aj/v6/mblog/mbloglist?'
             par2 = {
@@ -78,8 +80,9 @@ class WeiBo:
             soup2 = BeautifulSoup(html2, 'lxml')
             for div in soup2.find_all('div', attrs={'class': 'WB_from'}):
                 detail_url = div.find_all('a')[0]['href']
-                if '?' in detail_url:
-                    url_list.append(detail_url)
+                # if '?' in detail_url:
+                #     url_list.append(detail_url)
+                url_list.append(detail_url)
 
             url3 = 'https://weibo.com/p/aj/v6/mblog/mbloglist?'
             par3 = {
@@ -101,8 +104,9 @@ class WeiBo:
             soup3 = BeautifulSoup(html3, 'lxml')
             for div in soup3.find_all('div', attrs={'class': 'WB_from'}):
                 detail_url = div.find_all('a')[0]['href']
-                if '?' in detail_url:
-                    url_list.append(detail_url)
+                # if '?' in detail_url:
+                #     url_list.append(detail_url)
+                url_list.append(detail_url)
             if page == 1:
                 pages = soup3.find_all('a', attrs={'bpfilter': 'page'})
                 page_num = re.search(r'(\d+)', pages[0].string).group(1)
@@ -112,27 +116,39 @@ class WeiBo:
             pass
 
     def get_weibo(self, url):
-        response = self.session.get('https://weibo.com'+url)
-        html = re.search(r'<script>FM.view\(({"ns":"pl.content.weiboDetail.index"[\s\S]*?)\)</script>', response.text).group(1)
-        print(html)
-        html = json.loads(html)['html']
-        soup = BeautifulSoup(html, 'lxml').find('div', attrs={'node-type': 'feed_list_content'})
-        weibo_text = ''
-        for child in soup.children:
-            text = child.string
-            if text:
-                weibo_text += text.strip()+'\n'
-        print(weibo_text)
-        return weibo_text
+        try:
+            response = self.session.get('https://weibo.com'+url)
+            html = re.search(r'<script>FM.view\(({"ns":"pl.content.weiboDetail.index"[\s\S]*?)\)</script>', response.text).group(1)
+            print(html)
+            html = json.loads(html)['html']
+            soup = BeautifulSoup(html, 'lxml').find('div', attrs={'node-type': 'feed_list_content'})
+            weibo_text = ''
+            for child in soup.children:
+                text = child.string
+                if text:
+                    weibo_text += text.strip()+'\n'
+            print(weibo_text)
+            return weibo_text
+        except:
+            print(response.text)
+
 
     def start(self):
         for id in self.userids:
+            if os.path.exists(r'./{0}.txt'.format(id)):
+                os.remove(r'./{0}.txt'.format(id))
+            f = open(r'./{0}.txt'.format(id), 'a', encoding='utf-8')
             count = 0
-            print(self.get_username_number(id))
+            info = self.get_username_number(id)
+            print(info)
+            f.write(str(info)+'\n')
+            f.flush()
             url_list = self.get_weibo_url(id, 1)
             print(url_list)
             for url in url_list:
-                self.get_weibo(url)
+                weibo_text = self.get_weibo(url)
+                f.write(weibo_text+'\n')
+                f.flush()
                 count += 1
                 print(url)
                 print(count)
@@ -141,16 +157,26 @@ class WeiBo:
                     url_list = self.get_weibo_url(id, page)
                     print(url_list)
                     for url in url_list:
-                        self.get_weibo(url)
+                        try:
+                            weibo_text = self.get_weibo(url)
+                            f.write(weibo_text + '\n')
+                            f.flush()
+                        except:
+                            pass
                         count += 1
                         print(url)
                         print('page:', page)
                         print(count)
+            f.close()
 
 
 
 
 if __name__ == "__main__":
-    cookie = login()
-    weibo = WeiBo(cookie, ['2386568184'])
+    if os.path.exists(r'./cookies.txt'):
+        with open(r'./cookies.txt', 'r') as f:
+            cookie = f.read()
+    else:
+        cookie = login()
+    weibo = WeiBo(cookie, ['1264046551'])
     weibo.start()
