@@ -17,7 +17,7 @@ class WeiBo:
         self.page_num = 0
 
     def get_username_number(self, uid):
-        user_url = 'https://weibo.com/p/100306{0}/info'.format(uid)
+        user_url = 'https://weibo.com/{0}/info'.format(uid)
         response = self.session.get(user_url)
         # 获取个人信息
         infoStr = re.search(r'<ul class=\\"clearfix\\">([\s\S]*?)<\\/ul>', response.text).group(1)
@@ -36,7 +36,12 @@ class WeiBo:
         numberStr = re.search(r'(<table class=\\"tb_counter\\" cellpadding=\\"0\\" cellspacing=\\"0\\">[\s\S]*?<\\/table>)', response.text).group(1)
         li = re.findall(r'<strong [\s\S]*?">(\d+)<\\/strong>', numberStr)
         guanzhu, fans, weibo_num = li
-        return (info, guanzhu, fans, weibo_num)
+        hrefs = re.findall(r'<a[\s\S]*?href=\\"([\s\S]*?)\\" >', numberStr)
+        guanzhu_href = 'https:' + hrefs[0].replace('\\', '')
+        fans_href = 'https:' + hrefs[1].replace('\\', '')
+        # print(guanzhu_href)
+        # print(fans_href)
+        return (info, guanzhu, fans, weibo_num, guanzhu_href, fans_href), guanzhu_href, fans_href
 
     def get_weibo_url(self, uid, page):
         url_list = []
@@ -50,6 +55,7 @@ class WeiBo:
                 'ajaxpagelet': '1',
                 'ajaxpagelet_v6': '1',
             }
+            # print(url1+urlencode(par1))
             response1 = self.session.get(url1+urlencode(par1))
             li1 = re.match(r'<script>parent.FM.view\(([\s\S]*?)\)</script>', response1.text).group(1)
             html1 = json.loads(li1)['html']
@@ -75,6 +81,7 @@ class WeiBo:
                 'pre_page': page,
                 'domain_op': '100306',
             }
+            # print(url2 + urlencode(par2))
             response2 = self.session.get(url2 + urlencode(par2))
             html2 = json.loads(response2.text)['data']
             soup2 = BeautifulSoup(html2, 'lxml')
@@ -132,6 +139,61 @@ class WeiBo:
         except:
             print(response.text)
 
+    def get_fans(self, url):
+        pass
+
+    def get_guanzhu(self, url):
+        count = 1
+        response = self.session.get(url)
+        pages = re.search(r'(<div class=\\"W_pages\\">[\s\S]*?<\\/div>)', response.text).group(1)
+
+        soup = BeautifulSoup(pages, 'lxml').find_all('a')[-1]
+        next_page = None
+        if '下一页' in str(soup):
+            next_page = 'https://weibo.com' + soup.get('href').replace('\\"', '').replace('\\', '')
+
+        uids = []
+        guanzhu_li = re.findall(r'(<div class=\\"info_name[\s\S]*?>[\s\S]*?<\\/div>)', response.text)
+        for i in guanzhu_li:
+            soup = BeautifulSoup(i, 'lxml')
+            a = soup.find('a', attrs={'class': '\\"S_txt1\\"'})
+            userid = a.get('usercard')
+            if userid:
+                uids.append(re.search(r'id=(\d+)&', userid).group(1))
+            else:
+                uids.append(None)
+
+        while next_page:
+            count += 1
+            # 新浪规定非互相关注的话只能看前五页关注列表
+            if count > 5:
+                break
+            response = self.session.get(next_page)
+            pages = re.search(r'(<div class=\\"W_pages\\">[\s\S]*?<\\/div>)', response.text).group(1)
+            soup = BeautifulSoup(pages, 'lxml').find_all('a')[-1]
+            next_page = None
+            if '下一页' in str(soup):
+                next_page = 'https://weibo.com' + soup.get('href').replace('\\"', '').replace('\\', '')
+
+            guanzhu_li = re.findall(r'(<div class=\\"info_name[\s\S]*?>[\s\S]*?<\\/div>)', response.text)
+            for i in guanzhu_li:
+                soup = BeautifulSoup(i, 'lxml')
+                a = soup.find('a', attrs={'class': '\\"S_txt1\\"'})
+                userid = a.get('usercard')
+                if userid:
+                    uids.append(re.search(r'id=(\d+)&', userid).group(1))
+                else:
+                    uids.append(None)
+        print(len(uids))
+        return uids
+
+
+
+
+
+
+
+
 
     def start(self):
         for id in self.userids:
@@ -139,7 +201,7 @@ class WeiBo:
                 os.remove(r'./{0}.txt'.format(id))
             f = open(r'./{0}.txt'.format(id), 'a', encoding='utf-8')
             count = 0
-            info = self.get_username_number(id)
+            info, guanzhu_href, fans_href = self.get_username_number(id)
             print(info)
             f.write(str(info)+'\n')
             f.flush()
@@ -172,11 +234,15 @@ class WeiBo:
 
 
 
+
 if __name__ == "__main__":
     if os.path.exists(r'./cookies.txt'):
         with open(r'./cookies.txt', 'r') as f:
             cookie = f.read()
     else:
         cookie = login()
+    # cookie = login()
     weibo = WeiBo(cookie, ['1264046551'])
-    weibo.start()
+    # weibo.start()
+    info, guanzhu_href, fans_href = weibo.get_username_number('1264046551')
+    weibo.get_guanzhu(guanzhu_href)
