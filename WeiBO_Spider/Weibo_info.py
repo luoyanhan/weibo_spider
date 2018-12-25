@@ -126,7 +126,6 @@ class WeiBo:
         try:
             response = self.session.get('https://weibo.com'+url)
             html = re.search(r'<script>FM.view\(({"ns":"pl.content.weiboDetail.index"[\s\S]*?)\)</script>', response.text).group(1)
-            print(html)
             html = json.loads(html)['html']
             soup = BeautifulSoup(html, 'lxml').find('div', attrs={'node-type': 'feed_list_content'})
             weibo_text = ''
@@ -137,7 +136,7 @@ class WeiBo:
             print(weibo_text)
             return weibo_text
         except:
-            print(response.text)
+            pass
 
     def get_fans(self, url):
         pass
@@ -172,7 +171,7 @@ class WeiBo:
             pages = re.search(r'(<div class=\\"W_pages\\">[\s\S]*?<\\/div>)', response.text).group(1)
             soup = BeautifulSoup(pages, 'lxml').find_all('a')[-1]
             next_page = None
-            if '下一页' in str(soup):
+            if '下一页' in str(soup) and soup.get('href'):
                 next_page = 'https://weibo.com' + soup.get('href').replace('\\"', '').replace('\\', '')
 
             guanzhu_li = re.findall(r'(<div class=\\"info_name[\s\S]*?>[\s\S]*?<\\/div>)', response.text)
@@ -188,36 +187,27 @@ class WeiBo:
         return uids
 
 
-
-
-
-
-
-
-
     def start(self):
+        count = 0
         for id in self.userids:
             if os.path.exists(r'./{0}.txt'.format(id)):
                 os.remove(r'./{0}.txt'.format(id))
             f = open(r'./{0}.txt'.format(id), 'a', encoding='utf-8')
-            count = 0
             info, guanzhu_href, fans_href = self.get_username_number(id)
-            print(info)
             f.write(str(info)+'\n')
             f.flush()
+            self.get_guanzhu(guanzhu_href)
             url_list = self.get_weibo_url(id, 1)
-            print(url_list)
+
             for url in url_list:
                 weibo_text = self.get_weibo(url)
                 f.write(weibo_text+'\n')
                 f.flush()
                 count += 1
-                print(url)
                 print(count)
             if self.page_num > 1:
                 for page in range(2, self.page_num+1):
                     url_list = self.get_weibo_url(id, page)
-                    print(url_list)
                     for url in url_list:
                         try:
                             weibo_text = self.get_weibo(url)
@@ -226,8 +216,6 @@ class WeiBo:
                         except:
                             pass
                         count += 1
-                        print(url)
-                        print('page:', page)
                         print(count)
             f.close()
 
@@ -241,8 +229,5 @@ if __name__ == "__main__":
             cookie = f.read()
     else:
         cookie = login()
-    # cookie = login()
-    weibo = WeiBo(cookie, ['1264046551'])
-    # weibo.start()
-    info, guanzhu_href, fans_href = weibo.get_username_number('1264046551')
-    weibo.get_guanzhu(guanzhu_href)
+    weibo = WeiBo(cookie, ['2386568184', '2386774894', '1264046551'])
+    weibo.start()
